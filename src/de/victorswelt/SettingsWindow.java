@@ -30,7 +30,7 @@ public class SettingsWindow extends JPanel {
 	JFrame frame;
 	
 	JButton exportButton;
-	JTextField originOffset;
+	JTextField offscreenSize, originOffset;
 	
 	public SettingsWindow(PieChart pieChart) {
 		this.pieChart = pieChart;
@@ -38,6 +38,36 @@ public class SettingsWindow extends JPanel {
 		
 		// set up the layout
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+		
+		// create the offscreen size field
+		add(new JLabel("Image size (Auto-Resizes Window): "));
+		add(offscreenSize = new JTextField("1024"));
+		offscreenSize.getDocument().addDocumentListener(new DocumentListener() {
+			
+			@Override
+			public void removeUpdate(DocumentEvent e) {
+				changeOffscreenSize(offscreenSize.getText());
+			}
+
+			@Override
+			public void insertUpdate(DocumentEvent e) {
+				changeOffscreenSize(offscreenSize.getText());
+			}
+			
+			@Override
+			public void changedUpdate(DocumentEvent e) {
+				changeOffscreenSize(offscreenSize.getText());
+			}
+			
+			private void changeOffscreenSize(String s) {
+				try {
+					int size = Integer.parseInt(s);
+					pieChartWindow.setOffscreenSize(size, size);
+				} catch(NumberFormatException e) {
+					
+				}
+			}
+		});
 		
 		// create the origin offset field
 		add(new JLabel("Origin offset (in Degrees): "));
