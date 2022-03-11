@@ -12,6 +12,7 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -30,7 +31,13 @@ public class SettingsWindow extends JPanel {
 	JFrame frame;
 	
 	JButton exportButton;
-	JTextField offscreenSize, originOffset;
+	JTextField offscreenSize, originOffset, calcuatorLimit;
+	
+	JPanel calculatorPanel;
+	
+	JCheckBox calculatorActive;
+	
+	SegmentField lastSegment;
 	
 	public SettingsWindow(PieChart pieChart) {
 		this.pieChart = pieChart;
@@ -99,12 +106,47 @@ public class SettingsWindow extends JPanel {
 		});
 		
 		// create the segments
-		add(new SegmentField(pieChartWindow, new Segment(Color.decode("#98D9EE"), 10)));
-		add(new SegmentField(pieChartWindow, new Segment(Color.decode("#00E783"), 10)));
-		add(new SegmentField(pieChartWindow, new Segment(Color.decode("#E55F28"), 10)));
-		add(new SegmentField(pieChartWindow, new Segment(Color.decode("#000096"), 10)));
-		add(new SegmentField(pieChartWindow, new Segment(Color.decode("#B4E2F1"), 0)));
-		add(new SegmentField(pieChartWindow, new Segment(Color.decode("#F2C74E"), 0)));
+		add(new SegmentField(pieChartWindow, this, new Segment(Color.decode("#98D9EE"), 10)));
+		add(new SegmentField(pieChartWindow, this, new Segment(Color.decode("#00E783"), 10)));
+		add(new SegmentField(pieChartWindow, this, new Segment(Color.decode("#E55F28"), 10)));
+		add(new SegmentField(pieChartWindow, this, new Segment(Color.decode("#000096"), 10)));
+		add(new SegmentField(pieChartWindow, this, new Segment(Color.decode("#B4E2F1"), 0)));
+		add(lastSegment = new SegmentField(pieChartWindow, this, new Segment(Color.decode("#F2C74E"), 0)));
+		
+		// create the calulator panel
+		add(calculatorPanel = new JPanel());
+		calculatorPanel.setLayout(new BoxLayout(calculatorPanel, BoxLayout.Y_AXIS));
+		calculatorPanel.setBorder(BorderFactory.createTitledBorder("Calculate last segment as remainder"));
+		calculatorPanel.add(calculatorActive = new JCheckBox("Calculate the last value based on the remainder of the other values"));
+		calculatorPanel.add(new JLabel("Total count:"));
+		calculatorPanel.add(calcuatorLimit = new JTextField());
+		
+		calcuatorLimit.setEnabled(calculatorActive.isSelected());
+		calculatorActive.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				calcuatorLimit.setEnabled(calculatorActive.isSelected());
+			}
+		});
+		
+		calcuatorLimit.getDocument().addDocumentListener(new DocumentListener() {
+			
+			@Override
+			public void removeUpdate(DocumentEvent e) {
+				calculateRemainder();
+			}
+
+			@Override
+			public void insertUpdate(DocumentEvent e) {
+				calculateRemainder();
+			}
+			
+			@Override
+			public void changedUpdate(DocumentEvent e) {
+				calculateRemainder();
+			}
+		});
 		
 		// create the export button
 		add(exportButton = new JButton("Export"));
@@ -166,6 +208,7 @@ public class SettingsWindow extends JPanel {
 		if(!f.exists()) {
 			try {
 				ImageIO.write(pieChartWindow.getOffscreen(), "png", f);
+				JOptionPane.showMessageDialog(this, "Image saved under" + f.getAbsolutePath(), "Save successful!", JOptionPane.INFORMATION_MESSAGE);
 			} catch (IOException e) {
 				JOptionPane.showMessageDialog(this, "Error during saving! Save process aborted.\n\nStacktrace:\n" + e.getStackTrace(), "Save error!", JOptionPane.ERROR_MESSAGE);
 				e.printStackTrace();
@@ -173,6 +216,23 @@ public class SettingsWindow extends JPanel {
 		}
 		else
 			JOptionPane.showMessageDialog(this, "File already exists! Save process aborted", "Save error!", JOptionPane.ERROR_MESSAGE);
+	}
+	
+	private void calculateRemainder() {
+		// get the total size of the of segments minus the last segment
+		int count = 0;
+		for(Segment s : pieChartWindow.segments)
+			count += s.getSize();
+		count -= lastSegment.segment.getSize();
+		System.out.println(count);
+		
+		// set the last segment to it
+		try {
+			count = Integer.parseInt(calcuatorLimit.getText()) - count;
+			lastSegment.setSize(count);
+		} catch(NumberFormatException e) {
+			
+		}
 	}
 }
 
@@ -185,10 +245,12 @@ class SegmentField extends JPanel {
 	PieChartWindow pieChartWindow;
 	Segment segment;
 	JTextField color, size;
+	SettingsWindow settingsWindow;
 	
 	
-	public SegmentField(PieChartWindow pieChartWindow, Segment s) {
+	public SegmentField(PieChartWindow pieChartWindow, SettingsWindow settingsWindow, Segment s) {
 		this.pieChartWindow = pieChartWindow;
+		this.settingsWindow = settingsWindow;
 		segment = s;
 		
 		// add the segment to the pie chart
@@ -242,7 +304,10 @@ class SegmentField extends JPanel {
 		
 	}
 	
-
+	public void setSize(int i) {
+		segment.setSize(i);
+		size.setText("" + i);
+	}
 	
 	 private void applyColor(String text) {
 		try {
@@ -252,7 +317,6 @@ class SegmentField extends JPanel {
 			segment.setColor(c);
 			pieChartWindow.repaint();
 		} catch(Exception e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -262,7 +326,6 @@ class SegmentField extends JPanel {
 			segment.setSize(size);
 			pieChartWindow.repaint();
 		} catch(NumberFormatException e) {
-			e.printStackTrace();
 		}
 	}
 }
